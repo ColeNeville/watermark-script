@@ -116,8 +116,6 @@ function watermark {
     exit 1
   fi
 
-  parse-arguments "$@"
-
   mkdir -p "$output_directory"
 
   create-watermark \
