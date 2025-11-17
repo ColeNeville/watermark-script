@@ -3,11 +3,8 @@
 set -euo pipefail
 
 # This script adds a watermark to all images in a specified directory.
-# Usage: ./watermark.sh -d /path/to/images -w "<watermark_string>" -o /path/to/output
-# Requirements: ImageMagick must be installed.
-# Example: ./watermark.sh -d ./images -w "Sample Watermark" -o ./output
 
-WATERMARK_IMAGE_PATH="/tmp/watermark.png"
+CREATED_WATERMARK_PATH="/tmp/watermark.png"
 
 # Setup logging functions
 RED='\033[0;31m'
@@ -15,52 +12,31 @@ YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-function log_info {
+function log-info {
   echo -e "${GREEN}[INFO]${NC} $1"
 }
 
-function log_warning {
+function log-warning {
   echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-function log_error {
+function log-error {
   echo -e "${RED}[ERROR]${NC} $1"
 }
 
 # Ensure ImageMagick is installed
-function ensure_imagemagick_installed {
+function ensure-imagemagick {
   if ! command -v convert &>/dev/null; then
     echo "ImageMagick is not installed. Please install it and try again."
     exit 1
   fi
 }
 
-function parse_arguments {
-  log_info "Parsing command-line arguments..."
-  while getopts "d:w:o:" opt; do
-    case $opt in
-    d) IMAGE_DIR="$OPTARG" ;;
-    w) WATERMARK_TEXT="$OPTARG" ;;
-    o) OUTPUT_DIR="$OPTARG" ;;
-    *)
-      echo "Usage: $0 -d /path/to/images -w \"<watermark_string>\""
-      exit 1
-      ;;
-    esac
-  done
+function create-watermark {
+  local watermark_text="$1"
+  local watermark_path="$2"
 
-  if [ -z "$IMAGE_DIR" ] || [ -z "$WATERMARK_TEXT" ] || [ -z "$OUTPUT_DIR" ]; then
-    echo "Usage: $0 -d /path/to/images -w \"<watermark_string>\" -o /path/to/output"
-    exit 1
-  fi
-
-  log_info "Image directory: $IMAGE_DIR"
-  log_info "Watermark text: $WATERMARK_TEXT"
-  log_info "Output directory: $OUTPUT_DIR"
-}
-
-function create_watermark_image {
-  log_info "Creating watermark image at path: $WATERMARK_IMAGE_PATH with $WATERMARK_TEXT..."
+  log-info "Creating watermark image at path: $watermark_path with $watermark_text..."
 
   # Create a transparent watermark image with the specified text
   magick -background none \
@@ -68,38 +44,89 @@ function create_watermark_image {
     -gravity center \
     -pointsize 36 \
     -font "./OpenSans-SemiBold.ttf" \
-    label:"$WATERMARK_TEXT" \
+    label:"$watermark_text" \
     -rotate -30 \
-    "$WATERMARK_IMAGE_PATH"
+    "$watermark_path"
 }
 
-function apply_watermark_to_image {
+function apply-watermark {
   local input_image="$1"
-  local output_image="$2"
+  local watermark_path="$2"
+  local output_image="$3"
 
-  log_info "Applying watermark to image: $input_image"
+  log-info "Applying watermark to image: $input_image"
 
   magick composite \
     -dissolve 25 \
-    -tile "$WATERMARK_IMAGE_PATH" \
+    -tile "$watermark_path" \
     "$input_image" "$output_image"
+
+  log-info "Watermarked image saved to: $output_image"
 }
 
-function main {
-  ensure_imagemagick_installed
-  parse_arguments "$@"
-  mkdir -p "$OUTPUT_DIR"
-  create_watermark_image
+function apply-watermarks {
+  local input_directory="$1"
+  local output_directory="$2"
 
-  for image in "$IMAGE_DIR"/*; do
-    if [ -f "$image" ]; then
+  log-info "Applying watermarks to all images in directory: $input_directory"
+
+  for input_image in "$input_directory"/*; do
+    if [[ -f "$input_image" ]]; then
       local filename
-      filename=$(basename -- "$image")
+      filename=$(basename -- "$input_image")
+
       local extension="${filename##*.}"
       local name="${filename%.*}"
-      apply_watermark_to_image "$image" "$OUTPUT_DIR/${name}-watermarked.${extension}"
+
+      local output_image="$output_directory/${name}-watermarked.${extension}"
+
+      apply-watermark \
+        "$input_image" \
+        "$output_image"
     fi
   done
+
+  log-info "All watermarks applied successfully."
 }
 
-main "$@"
+function print_usage {
+  echo "Usage: $0 -d /path/to/images -w \"<watermark_string>\" -o /path/to/output"
+}
+
+function watermark {
+  # Ensure requirements are met
+  ensure-imagemagick
+
+  # Parse command-line arguments
+  while getopts "d:w:o:" opt; do
+    case $opt in
+    d) input_directory="$OPTARG" ;;
+    w) watermark_text="$OPTARG" ;;
+    o) output_directory="$OPTARG" ;;
+    *)
+      print_usage
+      exit 1
+      ;;
+    esac
+  done
+
+  # Ensure all required arguments are provided
+  if [ -z "${input_directory:-}" ] || [ -z "${watermark_text:-}" ] || [ -z "${output_directory:-}" ]; then
+    print_usage
+    exit 1
+  fi
+
+  parse-arguments "$@"
+
+  mkdir -p "$output_directory"
+
+  create-watermark \
+    "$watermark_text" \
+    "$CREATED_WATERMARK_PATH"
+  apply-watermarks \
+    "$input_directory" \
+    "$CREATED_WATERMARK_PATH" \
+    "$output_directory"
+}
+
+watermark "$@"
