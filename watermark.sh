@@ -3,9 +3,9 @@
 set -euo pipefail
 
 # This script adds a watermark to all images in a specified directory.
-# Usage: ./watermark-images.sh -d /path/to/images -w "<watermark_string>" -o /path/to/output
+# Usage: ./watermark.sh -d /path/to/images -w "<watermark_string>" -o /path/to/output
 # Requirements: ImageMagick must be installed.
-# Example: ./watermark-images.sh -d ./images -w "Sample Watermark" -o ./output
+# Example: ./watermark.sh -d ./images -w "Sample Watermark" -o ./output
 
 WATERMARK_IMAGE_PATH="/tmp/watermark.png"
 
@@ -61,6 +61,7 @@ function parse_arguments {
 
 function create_watermark_image {
   log_info "Creating watermark image at path: $WATERMARK_IMAGE_PATH with $WATERMARK_TEXT..."
+
   # Create a transparent watermark image with the specified text
   magick -background none \
     -fill white \
@@ -75,8 +76,13 @@ function create_watermark_image {
 function apply_watermark_to_image {
   local input_image="$1"
   local output_image="$2"
+
   log_info "Applying watermark to image: $input_image"
-  magick composite -dissolve 25 -tile "$WATERMARK_IMAGE_PATH" "$input_image" "$output_image"
+
+  magick composite \
+    -dissolve 25 \
+    -tile "$WATERMARK_IMAGE_PATH" \
+    "$input_image" "$output_image"
 }
 
 function main {
