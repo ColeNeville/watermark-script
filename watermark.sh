@@ -26,7 +26,7 @@ function log-error {
 
 # Ensure ImageMagick is installed
 function ensure-imagemagick {
-  if ! command -v convert &>/dev/null; then
+  if ! command -v magick &>/dev/null; then
     echo "ImageMagick is not installed. Please install it and try again."
     exit 1
   fi
@@ -59,17 +59,18 @@ function apply-watermark {
 
   log-info "Applying watermark to image: $input_image"
 
-  magick composite \
+  magick "$input_image" -auto-orient - | magick composite \
     -dissolve 20 \
     -tile "$watermark_path" \
-    "$input_image" "$output_image"
+    - "$output_image"
 
   log-info "Watermarked image saved to: $output_image"
 }
 
 function apply-watermarks {
   local input_directory="$1"
-  local output_directory="$2"
+  local watermark_path="$2"
+  local output_directory="$3"
 
   log-info "Applying watermarks to all images in directory: $input_directory"
 
@@ -85,6 +86,7 @@ function apply-watermarks {
 
       apply-watermark \
         "$input_image" \
+        "$watermark_path" \
         "$output_image"
     fi
   done
