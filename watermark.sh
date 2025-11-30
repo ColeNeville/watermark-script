@@ -38,12 +38,15 @@ function create-watermark {
 
   log-info "Creating watermark image at path: $watermark_path with $watermark_text..."
 
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
   # Create a transparent watermark image with the specified text
   magick -background none \
     -fill white \
     -gravity center \
-    -pointsize 36 \
-    -font "./OpenSans-SemiBold.ttf" \
+    -pointsize 50 \
+    -font "$script_dir/OpenSans-SemiBold.ttf" \
     label:"$watermark_text" \
     -rotate -30 \
     "$watermark_path"
@@ -57,7 +60,7 @@ function apply-watermark {
   log-info "Applying watermark to image: $input_image"
 
   magick composite \
-    -dissolve 25 \
+    -dissolve 20 \
     -tile "$watermark_path" \
     "$input_image" "$output_image"
 
